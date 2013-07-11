@@ -1,0 +1,2 @@
+packages/test
+git://git@github.com/ericmoritz/deptool.git#deptool
