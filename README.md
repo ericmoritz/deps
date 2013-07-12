@@ -1,3 +1,5 @@
+__Warning: deps is in active development; don't use until 1.0 is released__
+
 deps
 =======
 
