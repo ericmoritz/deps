@@ -2,9 +2,10 @@
 module Main where
 import System.IO
 import Control.Monad (mapM)
-import System.Directory (doesDirectoryExist)
-import Data.List (isPrefixOf, break)
+
 import qualified Dep as D
+import qualified Downloaders.Local as Local
+import qualified Downloaders.Git as Git
 
 main = 
   process "./deps/" ["./deps.txt"]
@@ -52,11 +53,9 @@ dep_file dep_dir =
 
 downloaders :: [((String -> IO Bool), D.DownloadFun)]
 downloaders = [
-    (doesDirectoryExist,  local_downloader)
-  , (is_git,  git_downloader)
+    (Local.is,  Local.download)
+  , (Git.is,  Git.download)
   ]
-  where is_git = return . ("git://" `isPrefixOf`)
-
 
 downloader :: String -> IO D.DownloadFun
 downloader = choose_downloader downloaders
@@ -70,20 +69,3 @@ downloader = choose_downloader downloaders
         then return fun
         else choose_downloader xs line
              
-
-local_downloader :: D.DownloadFun
-local_downloader dir dep = do
-    putStrLn $ "cp " ++ url ++ " " ++ dep_dir  -- TODO: Actually copy the tree
-    return dep_dir
-  where
-    url = (D.url dep)
-    dep_dir = dir ++ (D.name dep)
-
-
-git_downloader :: D.DownloadFun
-git_downloader dir dep = do
-    putStrLn $ "git " ++ url ++ " " ++ dep_dir   -- TODO: Actually clone the repo
-    return dep_dir
-  where
-    url = (D.url dep)
-    dep_dir = dir ++ (D.name dep)
