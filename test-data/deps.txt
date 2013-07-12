@@ -1,2 +1,2 @@
-packages/test
-git://git@github.com/ericmoritz/deptool.git#deptool
+test    packages/test
+deptool git://git@github.com/ericmoritz/deptool.git

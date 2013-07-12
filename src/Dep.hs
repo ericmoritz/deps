@@ -1,11 +1,11 @@
-module Dep (Dep, new, url, download) where
+module Dep (Dep(..), DownloadFun, download) where
+
+type DownloadFun = String -> Dep -> IO String
 
 data Dep = Dep {
-  url :: String
-  , download_fun :: Dep -> String -> IO String
+    name :: String
+  , url :: String
+  , download_fun :: DownloadFun
 }
 
-new d f = Dep d f
-
-download d dir =
-  (download_fun d) d dir
+download dir d = (download_fun d) dir d
