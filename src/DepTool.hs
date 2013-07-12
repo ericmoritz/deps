@@ -4,7 +4,6 @@ import System.IO
 import Control.Monad (mapM)
 import System.Directory (doesDirectoryExist)
 import Data.List (isPrefixOf, break)
-import System.FilePath.Posix (dropExtension, takeFileName)
 import qualified Dep as D
 
 main = 
