@@ -52,9 +52,11 @@ dep_file dep_dir =
 
 downloaders :: [((String -> IO Bool), D.DownloadFun)]
 downloaders = [
-    (is_dir,  local_downloader)
+    (doesDirectoryExist,  local_downloader)
   , (is_git,  git_downloader)
   ]
+  where is_git = return . ("git://" `isPrefixOf`)
+
 
 downloader :: String -> IO D.DownloadFun
 downloader = choose_downloader downloaders
@@ -68,28 +70,20 @@ downloader = choose_downloader downloaders
         then return fun
         else choose_downloader xs line
              
-        
-is_dir :: String -> IO Bool
-is_dir = doesDirectoryExist
 
 local_downloader :: D.DownloadFun
 local_downloader dir dep = do
-    putStrLn $ "cp " ++ url ++ " " ++ dep_dir 
+    putStrLn $ "cp " ++ url ++ " " ++ dep_dir  -- TODO: Actually copy the tree
     return dep_dir
   where
     url = (D.url dep)
     dep_dir = dir ++ (D.name dep)
 
-is_git :: String -> IO Bool
-is_git = return . ("git://" `isPrefixOf`)
 
 git_downloader :: D.DownloadFun
 git_downloader dir dep = do
-    putStrLn $ "git " ++ url ++ " " ++ dep_dir   
+    putStrLn $ "git " ++ url ++ " " ++ dep_dir   -- TODO: Actually clone the repo
     return dep_dir
   where
     url = (D.url dep)
     dep_dir = dir ++ (D.name dep)
-    
--- A git url looks like git://{netloc}/{path}#{dep dir}
-git_dep_dir = tail . snd . break (== '#')
