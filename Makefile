@@ -1,6 +1,6 @@
 .PHONY: build configure install
 
-build: configure dist/build/deps/deps
+build: configure dist/build/deps/get-deps
 
 configure: dist/setup-config
 
@@ -13,5 +13,5 @@ clean:
 dist/setup-config:
 	runghc Setup.hs configure
 
-dist/build/deps/deps:
+dist/build/deps/get-deps:
 	runghc Setup.hs build
