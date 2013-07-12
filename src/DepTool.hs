@@ -44,7 +44,7 @@ parse_dep line =
 
 dep_file :: String -> IO (Maybe String)
 dep_file dep_dir = 
-  return Nothing -- TODO: read
+  return Nothing -- TODO: look in dep_dir for a deps.txt
 
 -- ===================================================================
 -- Downloaders
