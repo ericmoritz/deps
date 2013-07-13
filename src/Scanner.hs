@@ -11,17 +11,16 @@ scan = liftM concat . mapM mapper
 -- ===================================================================
 -- Pure Functions
 -- ===================================================================
-parse_file = (lines2deps . lines)
+parse_file :: String -> [Dep]
+parse_file = (map line2dep . lines)
 
-lines2deps :: [String] -> [Dep]
-lines2deps = map line2dep
-             
 line2dep :: String -> Dep
 line2dep line = do 
     dep name url
   where
     (name, url) = parse_dep line
              
+parse_dep :: String -> (String, String)
 parse_dep line = 
   (name, url)
   where
