@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Main where
 import System.IO
-import Control.Monad (mapM)
-
+import Control.Monad (mapM, liftM)
+import qualified Scanner
 import qualified Dep as D
 import qualified Downloaders.Local as Local
 import qualified Downloaders.Git as Git
@@ -10,38 +10,16 @@ import qualified Downloaders.Git as Git
 main = 
   process "./deps/" ["./deps.txt"]
 
-  
 process _ [] = return ()
-process dir (x:xs) = 
-    urls x        >>= -- [D.Dep]
-    download_urls >>= -- [String]
-    dep_files     >>= -- [Just String]
-    only_just     >>= -- [String]
-    enqueue       >>= -- xs ++ [String]
-    process dir       -- recurse
+process dir files = 
+    Scanner.scan files >>= -- [D.Dep]
+    download_urls      >>= -- [String]
+    dep_files          >>=
+    process dir            -- recurse
   where
-    enqueue       = return . (xs ++)
-    download_urls = mapM (D.download dir)
-    dep_files     = mapM dep_file
-    only_just ms  = return [v | Just v <- ms]
-
-urls f = do
-  content <- readFile f
-  mapM line2dep $ lines content
-
-line2dep :: String -> IO D.Dep
-line2dep line = do 
-    d <- downloader url
-    return $ D.Dep name url d
-  where
-    (name, url) = parse_dep line
-
-parse_dep line = 
-  (name, url)
-  where
-    bits = words line
-    name = head bits
-    url  = last bits
+    download_urls = mapM (download dir)
+    dep_files     = liftM only_just . mapM dep_file
+    only_just ms  = [v | Just v <- ms]
 
 dep_file :: String -> IO (Maybe String)
 dep_file dep_dir = 
@@ -50,22 +28,28 @@ dep_file dep_dir =
 -- ===================================================================
 -- Downloaders
 -- ===================================================================
+-- TODO: move this stuff to Downloaders.Download
 
+-- Downloads the dependancy and returns its directory
+download :: String -> D.Dep -> IO String
+download dir dep =
+  downloader (D.url dep) >>= \f -> f dir dep
+
+downloader :: String -> IO D.DownloadFun
+downloader = choose_downloader downloaders
+  where
+    choose_downloader [] url = do
+      error  $ "Unrecognizeable source URL: " ++ url
+    choose_downloader (x:xs) url = do
+      let (test,fun) = x
+      b <- (test url)
+      if b 
+        then return fun
+        else choose_downloader xs url
+             
 downloaders :: [((String -> IO Bool), D.DownloadFun)]
 downloaders = [
     (Local.is,  Local.download)
   , (Git.is,  Git.download)
   ]
 
-downloader :: String -> IO D.DownloadFun
-downloader = choose_downloader downloaders
-  where
-    choose_downloader [] line = do
-      error  $ "Unrecognizeable source URL: " ++ line
-    choose_downloader (x:xs) line = do
-      let (test,fun) = x
-      b <- (test line)
-      if b 
-        then return fun
-        else choose_downloader xs line
-             
