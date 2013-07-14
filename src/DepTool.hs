@@ -1,28 +1,39 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Main where
-import System.IO
-import Control.Monad (mapM, liftM)
+import Control.Monad (liftM, filterM, forM_)
+import Data.Either (lefts, rights)
+import Data.Maybe (catMaybes)
 import qualified Scanner
 import qualified Dep as D
 import qualified Downloaders.Local as Local
 import qualified Downloaders.Git as Git
 
+main :: IO ()
 main = 
   process "./deps/" ["./deps.txt"]
 
+process :: FilePath -> [FilePath] -> IO ()
 process _ [] = return ()
 process dir files = 
     Scanner.scan files >>= -- [D.Dep]
-    download_urls      >>= -- [String]
+    download_urls      >>= -- [Either String (IO String)]
+    log_errors         >>= -- [String]
     dep_files          >>=
     process dir            -- recurse
   where
     download_urls = mapM (download dir)
-    dep_files     = liftM only_just . mapM dep_file
-    only_just ms  = [v | Just v <- ms]
 
+    dep_files :: [String] -> IO [String]
+    dep_files fs    = liftM catMaybes $ mapM dep_file fs
+
+
+    log_errors :: [Either String (IO String)] -> IO [String]
+    log_errors items = do
+      forM_ (lefts items) putStrLn
+      sequence $ rights items
+                           
 dep_file :: String -> IO (Maybe String)
-dep_file dep_dir = 
+dep_file _dep_dir = 
   return Nothing -- TODO: look in dep_dir for a deps.txt
 
 -- ===================================================================
@@ -31,21 +42,24 @@ dep_file dep_dir =
 -- TODO: move this stuff to Downloaders.Download
 
 -- Downloads the dependancy and returns its directory
-download :: String -> D.Dep -> IO String
+download :: String -> D.Dep -> IO (Either String (IO String))
 download dir dep =
-  downloader (D.url dep) >>= \f -> f dir dep
-
-downloader :: String -> IO D.DownloadFun
-downloader = choose_downloader downloaders
+    downloader url >>= (return . execute)
   where
-    choose_downloader [] url = do
-      error  $ "Unrecognizeable source URL: " ++ url
-    choose_downloader (x:xs) url = do
-      let (test,fun) = x
-      b <- (test url)
-      if b 
-        then return fun
-        else choose_downloader xs url
+     url = (D.url dep)
+     execute (Left x)  = Left x
+     execute (Right f) = Right $ f dir dep
+                        
+
+downloader :: String -> IO (Either String D.DownloadFun)
+downloader url =
+    (return . headOrError url) =<< choose_downloader downloaders url
+  where
+    choose_downloader ds _ =
+      filterM (test url) ds
+    test u (t,_) = t u
+    headOrError u [] = Left $ "Unrecognizeable source URL: " ++ u
+    headOrError _ ((_,f):_) = Right f
              
 downloaders :: [((String -> IO Bool), D.DownloadFun)]
 downloaders = [

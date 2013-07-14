@@ -1,2 +1,2 @@
-test    packages/test
+foo http://example.com/
 deptool git://git@github.com/ericmoritz/deptool.git

@@ -1,6 +1,6 @@
 module Scanner (scan) where
 
-import Control.Monad (liftM, mapM)
+import Control.Monad (liftM)
 import Dep (dep, Dep)
 
 -- Convert a list of dep files into a list of deps
