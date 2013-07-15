@@ -1,15 +1,21 @@
 {-# LANGUAGE FlexibleInstances #-}
-module Downloaders.Local (is, download) where
+module Downloaders.Local (download) where
 
-import Dep (DownloadFun, url, name)
+import Downloaders (DownloadFun)
+import Dep (url, name)
 import System.Directory (doesDirectoryExist)
 
-is :: String -> IO Bool
-is = doesDirectoryExist
+handles :: String -> IO Bool
+handles = doesDirectoryExist
 
 download :: DownloadFun
 download dir dep = do
-    putStrLn $ "cp " ++ url dep ++ " " ++ dep_dir  -- TODO: Actually copy the tree
-    return dep_dir
+    handles' <- handles url'
+    if handles'
+      then do
+        putStrLn $ "cp " ++ url dep ++ " " ++ dep_dir  -- TODO: Actually copy the tree
+        return $ Just dep_dir
+      else return Nothing
   where
+    url' = url dep
     dep_dir = dir ++ (name dep)

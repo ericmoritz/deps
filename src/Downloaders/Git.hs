@@ -1,15 +1,20 @@
 {-# LANGUAGE FlexibleInstances #-}
-module Downloaders.Git (is, download) where
+module Downloaders.Git (download) where
 
-import Dep (DownloadFun, url, name)
-import Data.List (isPrefixOf, break)
+import Downloaders (DownloadFun)
+import Dep (url, name)
+import Data.List (isPrefixOf)
 
-is :: String -> IO Bool
-is = return . ("git://" `isPrefixOf`)
+handles :: String -> Bool
+handles = ("git://" `isPrefixOf`)
 
 download :: DownloadFun
-download dir dep = do
+download dir dep =
+  if handles url'
+  then do
     putStrLn $ "git " ++ url dep ++ " " ++ dep_dir   -- TODO: Actually clone the repo
-    return dep_dir
+    return $ Just dep_dir
+  else return Nothing
   where
+    url' = url dep
     dep_dir = dir ++ (name dep)

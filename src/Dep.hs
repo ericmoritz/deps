@@ -1,10 +1,9 @@
-module Dep (Dep, dep, name, url, DownloadFun) where
-
-type DownloadFun = String -> Dep -> IO String
+module Dep (Dep(..)) where
 
 data Dep = Dep {
     name :: String
   , url :: String
+  , fileName :: String
+  , line :: Int
 }
 
-dep = Dep
