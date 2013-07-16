@@ -4,10 +4,14 @@ import Control.Monad (liftM, filterM, forM_)
 import Data.Either (lefts, rights)
 import Data.Maybe (catMaybes)
 import Downloaders (DownloadFun)
+import Debug.Trace (traceShow)
+import System.Directory (doesFileExist, doesDirectoryExist)
 import qualified Scanner
 import qualified Dep as D
 import qualified Downloaders.Local as Local
 import qualified Downloaders.Git as Git
+
+traceShow' a = traceShow a a
 
 main :: IO ()
 main = 
@@ -34,8 +38,15 @@ process dir files =
       return $ rights items
                            
 dep_file :: String -> IO (Maybe String)
-dep_file _dep_dir = 
-  return Nothing -- TODO: look in dep_dir for a deps.txt
+dep_file dep_dir = do
+    exists <- doesFileExist dep_file
+    if exists
+      then return $ Just dep_file
+      else return Nothing
+  where dep_file = dep_dir </> "deps.txt"
+
+-- TODO: Find where this function actually exists
+(</>) x y = x ++ "/" ++ y
 
 -- ===================================================================
 -- Downloaders
@@ -47,10 +58,12 @@ dep_file _dep_dir =
 download :: String -> D.Dep -> IO (Either String String)
 download dir dep = do
   dep_dir <- firstJustM downloads
+
   return $ case dep_dir of
     Just dep_dir -> Right dep_dir
     Nothing      -> Left $ "Unrecognizeable source URL " ++ fileline ++ url'
   where
+    dep_dir   = dir </> (D.name dep)
     downloads = map (\f -> f dir dep) downloaders
     url'      = D.url dep
     fileline  = (D.fileName dep) ++ ":" ++ show (D.line dep) ++ ":"
@@ -67,8 +80,18 @@ download dir dep = do
 --
              
 downloaders :: [DownloadFun]
-downloaders = [Local.download, Git.download]
+downloaders = [exists, Local.download, Git.download]
 
+-- Dummy downloader for existing directories
+exists :: DownloadFun
+exists dir dep = do
+  putStrLn dep_dir
+  exists <- doesDirectoryExist dep_dir
+  if exists
+    then return $ Just dep_dir
+    else return Nothing
+  where dep_dir = dir ++ (D.name dep)
+        
 firstJustM :: Monad m => [m (Maybe a)] -> m (Maybe a)
 firstJustM [] = return Nothing
 firstJustM (mx:xs) = mx >>= \x ->
