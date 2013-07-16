@@ -3,6 +3,7 @@ module Main where
 import Control.Monad (liftM, filterM, forM_)
 import Data.Either (lefts, rights)
 import Data.Maybe (catMaybes)
+import Data.List (intercalate)
 import Downloaders (DownloadFun)
 import Debug.Trace (traceShow)
 import System.Directory (doesFileExist, doesDirectoryExist)
@@ -34,8 +35,11 @@ process dir files =
 
     log_errors :: [Either String String] -> IO [String]
     log_errors items = do
-      forM_ (lefts items) putStrLn
-      return $ rights items
+      let errors = (lefts items)
+      if null errors
+        then return $ rights items
+        else error $ intercalate "\n" errors
+
                            
 dep_file :: String -> IO (Maybe String)
 dep_file dep_dir = do
@@ -61,7 +65,7 @@ download dir dep = do
 
   return $ case dep_dir of
     Just dep_dir -> Right dep_dir
-    Nothing      -> Left $ "Unrecognizeable source URL " ++ fileline ++ url'
+    Nothing      -> Left $ fileline ++ " Unrecognizeable source URL " ++ url'
   where
     dep_dir   = dir </> (D.name dep)
     downloads = map (\f -> f dir dep) downloaders
