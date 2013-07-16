@@ -6,6 +6,7 @@ import Dep (url, name)
 import Data.List (isPrefixOf, intercalate, stripPrefix)
 import System.Exit (ExitCode(..))
 import System.Process (system)
+import Debug.Trace (traceShow)
 
 handles :: String -> Bool
 handles = ("git+" `isPrefixOf`)
@@ -14,8 +15,10 @@ download :: DownloadFun
 download dir dep =
   if handles url'
   then do
-    git_clone dep_dir url' .&&. git_checkout dep_dir (ref url')
-    return $ Just dep_dir
+    exit <- git_clone dep_dir url' .&&. git_checkout dep_dir (ref url')
+    return $ Just $ case exit of
+      ExitSuccess -> Right dep_dir
+      ExitFailure n -> Left $ "git failed with exit code " ++ show n
   else return Nothing
   where
     url' = url dep
@@ -24,7 +27,6 @@ download dir dep =
 git_clone :: String -> String -> IO ExitCode
 git_clone dir url = do
     run cloneCmd
-    return ExitSuccess
   where
     cloneCmd = ["git", "clone", git_remote url, dir]
 
@@ -32,7 +34,6 @@ git_checkout :: String -> Maybe String -> IO ExitCode
 git_checkout _ Nothing      = return ExitSuccess
 git_checkout dir (Just ref) = do
     run checkoutCmd
-    return ExitSuccess
   where
     checkoutCmd = ["git", "--git-dir=" ++ dir ++ "/.git", "checkout", ref]
 

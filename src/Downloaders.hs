@@ -1,6 +1,6 @@
 module Downloaders (DownloadFun) where
 
-import Dep (Dep(Dep))
+import Dep (Dep)
 
-type DownloadFun = String -> Dep -> IO (Maybe String)
+type DownloadFun = String -> Dep -> IO (Maybe (Either String String))
       

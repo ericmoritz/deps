@@ -22,7 +22,7 @@ process :: FilePath -> [FilePath] -> IO ()
 process _ [] = return ()
 process dir files = 
     Scanner.scan files >>= -- [D.Dep]
-    download_urls      >>= -- [Either String (IO String)]
+    download_urls      >>= -- [Either String String]
     log_errors         >>= -- [String]
     dep_files          >>=
     process dir            -- recurse
@@ -31,9 +31,9 @@ process dir files =
     download_urls = mapM (download dir)
 
     dep_files :: [String] -> IO [String]
-    dep_files fs    = liftM catMaybes $ mapM dep_file fs
+    dep_files fs = liftM catMaybes $ mapM dep_file fs
 
-    log_errors :: [Either String String] -> IO [String]
+    log_errors :: [(Either String String)] -> IO [String]
     log_errors items = do
       let errors = (lefts items)
       if null errors
@@ -49,7 +49,7 @@ dep_file dep_dir = do
       else return Nothing
   where dep_file = dep_dir </> "deps.txt"
 
--- TODO: Find where this function actually exists
+-- TODO: Find where the </> function actually exists
 (</>) x y = x ++ "/" ++ y
 
 -- ===================================================================
@@ -64,7 +64,7 @@ download dir dep = do
   dep_dir <- firstJustM downloads
 
   return $ case dep_dir of
-    Just dep_dir -> Right dep_dir
+    Just dep_dir -> dep_dir
     Nothing      -> Left $ fileline ++ " Unrecognizeable source URL " ++ url'
   where
     dep_dir   = dir </> (D.name dep)
@@ -72,27 +72,16 @@ download dir dep = do
     url'      = D.url dep
     fileline  = (D.fileName dep) ++ ":" ++ show (D.line dep) ++ ":"
 
---downloader :: String -> IO (Either String DownloadFun)
---downloader url =
---
---  where
---    choose_downloader ds _ =
---      mapM (test url) ds
---    test u (t,_) = t u
---    headOrError u [] = Left $ "Unrecognizeable source URL: " ++ u
---    headOrError _ ((_,f):_) = Right f
---
-             
 downloaders :: [DownloadFun]
 downloaders = [exists, Local.download, Git.download]
 
--- Dummy downloader for existing directories
+-- Pass through downloader for existing directories
 exists :: DownloadFun
 exists dir dep = do
   putStrLn dep_dir
   exists <- doesDirectoryExist dep_dir
   if exists
-    then return $ Just dep_dir
+    then return $ Just $ Right dep_dir
     else return Nothing
   where dep_dir = dir ++ (D.name dep)
         

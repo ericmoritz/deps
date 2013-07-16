@@ -17,7 +17,7 @@ download dir dep = do
     if handles'
       then do
         cp (url dep) dep_dir
-        return $ Just dep_dir
+        return $ Just $ Right dep_dir
       else return Nothing
   where
     url' = url dep
