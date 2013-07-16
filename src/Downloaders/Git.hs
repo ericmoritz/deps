@@ -4,6 +4,8 @@ module Downloaders.Git (download) where
 import Downloaders (DownloadFun)
 import Dep (url, name, errorstr)
 import Data.List (isPrefixOf, intercalate, stripPrefix)
+import Control.Monad (when)
+import System.Directory (doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit (ExitCode(..))
 import System.Process (system)
 import Debug.Trace (traceShow)
@@ -16,6 +18,7 @@ download dir dep =
   if handles url'
   then do
     exit <- git_clone dep_dir url' .&&. git_checkout dep_dir (ref url')
+    deleteIfFailed dep_dir exit 
     return $ Just $ case exit of
       ExitSuccess   -> Right dep_dir
       ExitFailure n -> Left (errorline n)
@@ -26,6 +29,12 @@ download dir dep =
 
     errorline :: Int -> String
     errorline n = errorstr ("git failed with exit code " ++ show n) dep
+
+deleteIfFailed :: FilePath -> ExitCode -> IO ()
+deleteIfFailed dir (ExitFailure _) = 
+  doesDirectoryExist dir >>= (flip when) (removeDirectoryRecursive dir)
+deleteIfFailed _ ExitSuccess = return ()
+
 git_clone :: String -> String -> IO ExitCode
 git_clone dir url = do
     run cloneCmd
