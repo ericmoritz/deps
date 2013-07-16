@@ -16,7 +16,7 @@ download dir dep = do
     handles' <- handles url'
     if handles'
       then do
-        cp (url dep) dep_dir
+        cp (url dep) dir
         return $ Just $ Right dep_dir
       else return Nothing
   where
@@ -26,5 +26,5 @@ download dir dep = do
 
 cp :: String -> String -> IO ExitCode
 cp src dest = do
-  system $ intercalate " " ["cp", "-R", src, dest]
-  return ExitSuccess
+    system $ cmd
+  where cmd = intercalate " " ["cp", "-R", src, dest]
