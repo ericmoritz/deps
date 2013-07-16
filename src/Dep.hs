@@ -5,5 +5,5 @@ data Dep = Dep {
   , url :: String
   , fileName :: String
   , line :: Int
-}
+} deriving (Show)
 
