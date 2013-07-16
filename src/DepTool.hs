@@ -1,12 +1,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Main where
-import Control.Monad (liftM, filterM, forM_)
+import Control.Monad (liftM, filterM, forM_, unless)
 import Data.Either (lefts, rights)
 import Data.Maybe (catMaybes)
 import Data.List (intercalate)
 import Downloaders (DownloadFun)
 import Debug.Trace (traceShow)
-import System.Directory (doesFileExist, doesDirectoryExist)
+import System.Directory (doesFileExist, doesDirectoryExist, createDirectory)
 import qualified Scanner
 import qualified Dep as D
 import qualified Downloaders.Local as Local
@@ -21,12 +21,16 @@ main =
 process :: FilePath -> [FilePath] -> IO ()
 process _ [] = return ()
 process dir files = 
+    mkDir dir          >>
     Scanner.scan files >>= -- [D.Dep]
     download_urls      >>= -- [Either String String]
     log_errors         >>= -- [String]
     dep_files          >>=
     process dir            -- recurse
   where
+    mkDir :: String -> IO ()
+    mkDir dir = doesDirectoryExist dir >>=
+                flip unless (createDirectory dir)
     download_urls :: [D.Dep] -> IO [Either String String]
     download_urls = mapM (download dir)
 
@@ -43,14 +47,16 @@ process dir files =
                            
 dep_file :: String -> IO (Maybe String)
 dep_file dep_dir = do
-    exists <- doesFileExist dep_file
-    if exists
-      then return $ Just dep_file
+    exists' <- doesFileExist dep_file'
+
+    if exists'
+      then return $ Just dep_file'
       else return Nothing
-  where dep_file = dep_dir </> "deps.txt"
+  where dep_file' = dep_dir </> "deps.txt"
 
 -- TODO: Find where the </> function actually exists
-(</>) x y = x ++ "/" ++ y
+(</>) :: String -> String -> String
+x </> y = x ++ "/" ++ y
 
 -- ===================================================================
 -- Downloaders
@@ -61,16 +67,19 @@ dep_file dep_dir = do
 
 download :: String -> D.Dep -> IO (Either String String)
 download dir dep = do
-  dep_dir <- firstJustM downloads
+    dep_dir' <- firstJustM downloads
 
-  return $ case dep_dir of
-    Just dep_dir -> dep_dir
-    Nothing      -> Left $ fileline ++ " Unrecognizeable source URL " ++ url'
+    return $ case dep_dir' of
+          Just v       -> v
+          Nothing      -> Left errorline
+
   where
     dep_dir   = dir </> (D.name dep)
     downloads = map (\f -> f dir dep) downloaders
     url'      = D.url dep
-    fileline  = (D.fileName dep) ++ ":" ++ show (D.line dep) ++ ":"
+
+    errorline :: String
+    errorline = D.errorstr ("Unrecognizeable source URL " ++ url') dep
 
 downloaders :: [DownloadFun]
 downloaders = [exists, Local.download, Git.download]
@@ -78,7 +87,6 @@ downloaders = [exists, Local.download, Git.download]
 -- Pass through downloader for existing directories
 exists :: DownloadFun
 exists dir dep = do
-  putStrLn dep_dir
   exists <- doesDirectoryExist dep_dir
   if exists
     then return $ Just $ Right dep_dir
