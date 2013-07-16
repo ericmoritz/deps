@@ -1,2 +1,5 @@
 dist/
 *~
+*_flymake.hs
+*.log
+deps/
