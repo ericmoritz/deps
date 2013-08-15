@@ -13,12 +13,10 @@ handles :: String -> Bool
 handles = ("git+" `isPrefixOf`)
 
 download :: String -> Dep -> Download String
-download dir dep =
-  if handles url' then do
-    liftIO clone_and_checkout
-    return dep_dir
-  else
-    fail "no git+ prefix"
+download dir dep = do
+  guard (handles url')
+  liftIO clone_and_checkout
+  return dep_dir
   where
     clone_and_checkout :: IO ExitCode
     clone_and_checkout = git_clone dep_dir url' .&&. git_checkout dep_dir (ref url')
