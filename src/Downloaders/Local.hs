@@ -25,5 +25,5 @@ download dir dep = do
 
 cp :: String -> String -> IO ExitCode
 cp src dest = do
-  system $ intercalate " " ["cp", "-R", src, dest]
-  return ExitSuccess
+    system $ cmd
+  where cmd = intercalate " " ["cp", "-R", src, dest]

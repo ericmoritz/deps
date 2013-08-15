@@ -15,3 +15,6 @@ dist/setup-config:
 
 dist/build/deps/get-deps:
 	runghc Setup.hs build
+
+test: clean build
+	@make -C test-data/ clean build

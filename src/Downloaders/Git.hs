@@ -2,8 +2,10 @@
 module Downloaders.Git (download) where
 
 import Downloaders (Download)
-import Dep (url, name, Dep)
+import Dep (url, name, Dep, errorstr)
 import Data.List (isPrefixOf, intercalate, stripPrefix)
+import Control.Monad (when)
+import System.Directory (doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit (ExitCode(..))
 import System.Process (system)
 import Control.Monad
@@ -23,10 +25,17 @@ download dir dep = do
     url' = url dep
     dep_dir = dir ++ (name dep)
 
+    errorline :: Int -> String
+    errorline n = errorstr ("git failed with exit code " ++ show n) dep
+
+deleteIfFailed :: FilePath -> ExitCode -> IO ()
+deleteIfFailed dir (ExitFailure _) = 
+  doesDirectoryExist dir >>= (flip when) (removeDirectoryRecursive dir)
+deleteIfFailed _ ExitSuccess = return ()
+
 git_clone :: String -> String -> IO ExitCode
 git_clone dir url = do
     run cloneCmd
-    return ExitSuccess
   where
     cloneCmd = ["git", "clone", git_remote url, dir]
 
@@ -34,9 +43,8 @@ git_checkout :: String -> Maybe String -> IO ExitCode
 git_checkout _ Nothing      = return ExitSuccess
 git_checkout dir (Just ref) = do
     run checkoutCmd
-    return ExitSuccess
   where
-    checkoutCmd = ["git", "--git-dir=" ++ dir ++ "/.git", "checkout", ref]
+    checkoutCmd = ["cd", dir, "&&", "git", "checkout", ref]
 
 
 git_remote :: String -> String
