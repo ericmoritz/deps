@@ -58,10 +58,7 @@ dep_file dep_dir = do
 download :: String -> D.Dep -> IO (Either String String)
 download dir dep = do
   dep_dir <- firstJustM downloads
-
-  return $ case dep_dir of
-    Just dep_dir -> Right dep_dir
-    Nothing      -> Left $ "Unrecognizeable source URL " ++ fileline ++ url'
+  return $ maybe (fail $ "Unrecognizeable source URL " ++ fileline ++ url') Right dep_dir
   where
     dep_dir   = dir </> (D.name dep)
     downloads = map (\f -> f dir dep) downloaders
