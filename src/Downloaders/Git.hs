@@ -1,29 +1,27 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Downloaders.Git (download) where
 
-import Downloaders (DownloadFun)
-import Dep (url, name, errorstr)
+import Downloaders (Download)
+import Dep (url, name, Dep, errorstr)
 import Data.List (isPrefixOf, intercalate, stripPrefix)
 import Control.Monad (when)
 import System.Directory (doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit (ExitCode(..))
 import System.Process (system)
-import Debug.Trace (traceShow)
+import Control.Monad
+import Control.Monad.Trans
 
 handles :: String -> Bool
 handles = ("git+" `isPrefixOf`)
 
-download :: DownloadFun
-download dir dep =
-  if handles url'
-  then do
-    exit <- git_clone dep_dir url' .&&. git_checkout dep_dir (ref url')
-    deleteIfFailed dep_dir exit 
-    return $ Just $ case exit of
-      ExitSuccess   -> Right dep_dir
-      ExitFailure n -> Left (errorline n)
-  else return Nothing
+download :: String -> Dep -> Download String
+download dir dep = do
+  guard (handles url')
+  liftIO clone_and_checkout
+  return dep_dir
   where
+    clone_and_checkout :: IO ExitCode
+    clone_and_checkout = git_clone dep_dir url' .&&. git_checkout dep_dir (ref url')
     url' = url dep
     dep_dir = dir ++ (name dep)
 
