@@ -1,6 +1,9 @@
-module Downloaders (DownloadFun) where
+module Downloaders (runDownload, Download) where
 
 import Dep (Dep(Dep))
+import Control.Monad.Trans.Maybe
 
-type DownloadFun = String -> Dep -> IO (Maybe String)
+type Download a = MaybeT IO a
       
+runDownload :: Download String -> IO (Maybe String)
+runDownload = runMaybeT

@@ -1,9 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Main where
-import Control.Monad (liftM, filterM, forM_)
+import Control.Monad (liftM, filterM, forM_, msum, guard)
+import Control.Monad.Trans
 import Data.Either (lefts, rights)
 import Data.Maybe (catMaybes)
-import Downloaders (DownloadFun)
+import Downloaders (Download, runDownload)
 import Debug.Trace (traceShow)
 import System.Directory (doesFileExist, doesDirectoryExist)
 import qualified Scanner
@@ -57,11 +58,10 @@ dep_file dep_dir = do
 
 download :: String -> D.Dep -> IO (Either String String)
 download dir dep = do
-  dep_dir <- firstJustM downloads
-  return $ maybe (fail $ "Unrecognizeable source URL " ++ fileline ++ url') Right dep_dir
+  dep_dir <- runDownload $ downloader dir dep
+  return $ maybe (Left $ "Unrecognizeable source URL " ++ fileline ++ url') Right dep_dir
   where
     dep_dir   = dir </> (D.name dep)
-    downloads = map (\f -> f dir dep) downloaders
     url'      = D.url dep
     fileline  = (D.fileName dep) ++ ":" ++ show (D.line dep) ++ ":"
 
@@ -76,22 +76,17 @@ download dir dep = do
 --    headOrError _ ((_,f):_) = Right f
 --
              
-downloaders :: [DownloadFun]
-downloaders = [exists, Local.download, Git.download]
+downloader :: String -> D.Dep -> Download String
+-- chooses the first appropriate downloader
+downloader dir dep = msum $ [
+  exists dir dep,
+  Local.download dir dep,
+  Git.download dir dep]
 
 -- Dummy downloader for existing directories
-exists :: DownloadFun
+exists :: String -> D.Dep -> Download String
 exists dir dep = do
-  putStrLn dep_dir
-  exists <- doesDirectoryExist dep_dir
-  if exists
-    then return $ Just dep_dir
-    else return Nothing
-  where dep_dir = dir ++ (D.name dep)
-        
-firstJustM :: Monad m => [m (Maybe a)] -> m (Maybe a)
-firstJustM [] = return Nothing
-firstJustM (mx:xs) = mx >>= \x ->
-    case x of
-      Just _ -> return x
-      Nothing -> firstJustM xs
+  guard =<< (liftIO . doesDirectoryExist) dep_dir
+  return dep_dir
+  where
+    dep_dir = dir ++ (D.name dep)

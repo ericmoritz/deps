@@ -1,23 +1,27 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Downloaders.Git (download) where
 
-import Downloaders (DownloadFun)
-import Dep (url, name)
+import Downloaders (Download)
+import Dep (url, name, Dep)
 import Data.List (isPrefixOf, intercalate, stripPrefix)
 import System.Exit (ExitCode(..))
 import System.Process (system)
+import Control.Monad
+import Control.Monad.Trans
 
 handles :: String -> Bool
 handles = ("git+" `isPrefixOf`)
 
-download :: DownloadFun
+download :: String -> Dep -> Download String
 download dir dep =
-  if handles url'
-  then do
-    git_clone dep_dir url' .&&. git_checkout dep_dir (ref url')
-    return $ Just dep_dir
-  else return Nothing
+  if handles url' then do
+    liftIO clone_and_checkout
+    return dep_dir
+  else
+    fail "no git+ prefix"
   where
+    clone_and_checkout :: IO ExitCode
+    clone_and_checkout = git_clone dep_dir url' .&&. git_checkout dep_dir (ref url')
     url' = url dep
     dep_dir = dir ++ (name dep)
 
